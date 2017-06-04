@@ -6,6 +6,7 @@
 extern crate gfx;
 extern crate gfx_window_glutin;
 extern crate glutin;
+extern crate time;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
@@ -15,35 +16,28 @@ pub type DepthFormat = gfx::format::DepthStencil;
 
 gfx_defines!{
     vertex Vertex {
-        pos: [f32; 2] = "a_Pos",
+        x: f32 = "a_X",  // x coordinate of wave [-1,1]
+        p: f32 = "a_P",  // offset - vector P factor
+        q: f32 = "a_Q",  // offset - vector Q factor
+    }
+
+    constant Locals {
         colour: [f32; 4] = "a_Colour",
+        pv: [f32; 3] = "a_PV",
+        align: f32 = "align",
+        qv: [f32; 3] = "a_QV",
     }
 
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
-//        out: gfx::RenderTarget<ColorFormat> = "Target0",
-        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+        locals: gfx::ConstantBuffer<Locals> = "Locals",
+        out: gfx::RenderTarget<ColorFormat> = "Target0",
+//        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
     }
 }
 
-const SQUARE: [ Vertex; 8 ] = [
-    Vertex { pos: [ -0.5, -0.5 ], colour: [1.0, 0.0, 0.0, 1.0] },
-    Vertex { pos: [  0.5, -0.5 ], colour: [1.0, 1.0, 0.0, 1.0] },
-    Vertex { pos: [  0.5,  0.2 ], colour: [0.0, 1.0, 0.0, 1.0] },
-    Vertex { pos: [  0.0,  0.7 ], colour: [1.0, 1.0, 1.0, 1.0] },
-    Vertex { pos: [ -0.5,  0.2 ], colour: [0.0, 0.0, 1.0, 1.0] },
-    Vertex { pos: [  -0.6,  -0.2 ], colour: [0.2, 0.0, 1.0, 0.3] },
-    Vertex { pos: [  0.2,  -0.2 ], colour: [0.2, 0.0, 1.0, 0.3] },
-    Vertex { pos: [  0.0,  0.1 ], colour: [1.0, 1.0, 1.0, 0.3] },
-];
-
-const INDICES: &[u16] = &[
-     0, 1, 2,
-     2, 4, 0,
-     2, 3, 4,
-     5, 6, 7,
-];
-
+const NUM_COMPONENTS: usize = 100;
+const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
 
 const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
 
@@ -59,13 +53,27 @@ pub fn main() {
     let pso = factory.create_pipeline_simple(
         r#"
             #version 150 core
-            in vec2 a_Pos;
-            in vec4 a_Colour;
+
+            uniform Locals {
+                vec4 a_Colour;
+                vec3 a_PV;
+                float align;
+                vec3 a_QV;
+            };
+
+            in float a_X;
+            in float a_P;
+            in float a_Q;
+
             out vec4 v_Colour;
 
             void main() {
                 v_Colour = a_Colour;
-                gl_Position = vec4(a_Pos, 0.0, 1.0);
+                vec3 base = vec3(a_X, 0.0, 0.0);
+                vec3 pv = a_P * a_PV;
+                vec3 qv = a_Q * a_QV;
+                vec3 pos = base + pv + qv;
+                gl_Position = vec4(base, 1.0);
             }
         "#.as_bytes(),
         r#"
@@ -79,13 +87,59 @@ pub fn main() {
         "#.as_bytes(),
         pipe::new()
     ).unwrap();
-    let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&SQUARE, INDICES);
+
+    // Build a tube (prism).
+    let mut vertices = vec![];
+    let mut indices = vec![];
+    for i in 0..NUM_COMPONENTS {
+        // X simply ranges from -1 to 1.
+        let x = -1.0 + 2.0 * (i as f32 / NUM_COMPONENTS as f32);
+        // All vertices in cross-section at X.
+        for pq in COMPONENT_PQS.iter() {
+            let (p, q) = *pq;
+            vertices.push( Vertex { x, p, q, })
+        }
+
+        // First vertex of this cross-section.
+        let i1 = i * COMPONENT_PQS.len();
+
+        if i == 0 {
+            // First end-cap.
+            indices.append(&mut vec![i1, i1 + 1, i1 + 2]);
+            indices.append(&mut vec![i1 + 2, i1 + 3, i1]);
+        }
+        if i > 0 {
+            // First vertex of last cross-section.
+            let i0 = (i-1) * COMPONENT_PQS.len();
+            // Sides of prism.
+            for j in 0..COMPONENT_PQS.len() {
+                let j1 = (j + 1) % COMPONENT_PQS.len();
+                indices.append(&mut vec![i0 + j, i1 + j, i1 + j1]);
+                indices.append(&mut vec![i1 + j1, i0 + j1, i0 + j]);
+            }
+        }
+        if i == NUM_COMPONENTS - 1 {
+            // Last end-cap.
+            indices.append(&mut vec![i1, i1 + 3, i1 + 2]);
+            indices.append(&mut vec![i1 + 2, i1 + 1, i1]);
+        }
+    }
+    let indices_u16: Vec<u16> = indices.into_iter().map(|i| i as u16).collect();
+    let indices_u16_slice: &[u16] = &indices_u16;
+    println!("Vertices: {:?}", &vertices);
+    println!("Indices: {:?}", indices_u16_slice);
+
+    let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, indices_u16_slice);
     let mut data = pipe::Data {
         vbuf: vertex_buffer,
+        locals: factory.create_constant_buffer(1),
         out: main_colour,
     };
 
     let mut running = true;
+    let mut last_t = time::precise_time_s();
+    const REPORT_INTERVAL: f64 = 1.0;
+    let mut next_report_t = last_t;
     while running {
         // fetch events
         events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
@@ -99,11 +153,29 @@ pub fn main() {
             }
         });
 
+        // get instant
+        let t = time::precise_time_s();
+
         // draw a frame
+        let locals = Locals {
+            colour: [ 1.0, 1.0, 0.0, 1.0 ],
+            pv: [ 0.0, 0.1, 0.0 ],
+            align: 0.0,
+            qv: [ 0.0, 0.0, 0.1 ]
+        };
+        encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
         encoder.draw(&slice, &pso, &data);
         encoder.flush(&mut device);
         window.swap_buffers().unwrap();
         device.cleanup();
+
+        // report fps
+        let frame_time = t - last_t;
+        last_t = t;
+        if t > next_report_t {
+            next_report_t += REPORT_INTERVAL;
+            println!("Instantaneous FPS: {}", 1.0 / frame_time);
+        }
     }
 }

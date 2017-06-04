@@ -7,3 +7,4 @@ authors = ["Keith Wansbrough <Keith.Wansbrough@metaswitch.com>"]
 gfx = "0.16"
 gfx_window_glutin = "0.16"
 glutin = "0.8"
+time = "0.1"
