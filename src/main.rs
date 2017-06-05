@@ -14,13 +14,13 @@ use gfx::Device;
 use cgmath::{Deg, Vector3, Matrix4, PerspectiveFov};
 
 /// Number of segments in the string.
-const NUM_COMPONENTS: usize = 100;
+const NUM_COMPONENTS: usize = 5;
 
 /// Cross-section polygon of the string, as (p,q).
 const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
 
 /// P vector for cross-section.
-const PV: [f32; 3] = [ 0.0, 0.1, 0.0 ];
+const PV: [f32; 3] = [ 0.0, 0.2, 0.0 ];
 
 /// Q vector for cross-section.
 const QV: [f32; 3] = [ 0.0, 0.0, 2.5 ];
@@ -62,6 +62,7 @@ gfx_defines!{
         phase: f32 = "a_Phase",  // phase at x=0 (radians)
         qv: [f32; 3] = "a_QV",  // offset - vector Q
         freq: f32 = "a_Freq",  // spatial frequency (radians/unit)
+        light: [f32; 3] = "u_Light", // light direction for Gouraud
         ampl: f32 = "a_Ampl",  // amplitude
     }
 
@@ -70,6 +71,8 @@ gfx_defines!{
         locals: gfx::ConstantBuffer<Locals> = "Locals",
         out: gfx::RenderTarget<ColorFormat> = "Target0",
 //        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+//        out_depth: gfx::DepthTarget<gfx::format::DepthStencil> =
+//             gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
 
@@ -106,6 +109,7 @@ pub fn main() {
                 float a_Phase;
                 vec3 a_QV;
                 float a_Freq;
+                vec3 u_Light;
                 float a_Ampl;
             };
 
@@ -114,23 +118,41 @@ pub fn main() {
             in float a_Q;
 
             out vec4 v_Colour;
+            flat out vec3 v_Normal;
 
             void main() {
                 v_Colour = a_Colour;
                 vec3 base = vec3(a_X, a_Ampl * sin((a_X * a_Freq) + a_Phase), 0.0);
+                vec3 norm = vec3(1.0, a_Ampl * cos((a_X + a_Freq) + a_Phase), 0.0);  // TODO proper normal calculation
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
                 gl_Position = u_View * u_Model * vec4(pos, 1.0);
+                v_Normal = norm;
             }
         "#.as_bytes(),
         r#"
             #version 150 core
             in vec4 v_Colour;
+            flat in vec3 v_Normal;
             out vec4 Target0;
 
+            uniform Locals {
+                mat4 u_Model;
+                mat4 u_View;
+                vec4 a_Colour;
+                vec3 a_PV;
+                float a_Phase;
+                vec3 a_QV;
+                float a_Freq;
+                vec3 u_Light;
+                float a_Ampl;
+            };
+
             void main() {
-                Target0 = v_Colour;
+                float brightness = dot(normalize(v_Normal), normalize(u_Light));
+                vec4 dark_color = vec4(0.1, 0.1, 0.1, v_Colour.a);
+                Target0 = mix(dark_color, v_Colour, brightness);
             }
         "#.as_bytes(),
         pipe::new()
@@ -153,7 +175,8 @@ pub fn main() {
 
         if i == 0 {
             // First end-cap.
-            indices.append(&mut vec![i1, i1 + 1, i1 + 2]);
+            // ensure last vertex is i1
+            indices.append(&mut vec![i1 + 1, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 3, i1]);
         }
         if i > 0 {
@@ -162,13 +185,15 @@ pub fn main() {
             // Sides of prism.
             for j in 0..COMPONENT_PQS.len() {
                 let j1 = (j + 1) % COMPONENT_PQS.len();
-                indices.append(&mut vec![i0 + j, i1 + j, i1 + j1]);
+                // ensure last vertex is i0 + j both times.
+                indices.append(&mut vec![i1 + j, i1 + j1, i0 + j]);
                 indices.append(&mut vec![i1 + j1, i0 + j1, i0 + j]);
             }
         }
         if i == NUM_COMPONENTS - 1 {
             // Last end-cap.
-            indices.append(&mut vec![i1, i1 + 3, i1 + 2]);
+            // ensure last vertex is i1
+            indices.append(&mut vec![i1 + 3, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 1, i1]);
         }
     }
@@ -182,12 +207,12 @@ pub fn main() {
         out: main_colour,
     };
 
-
     let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
     let ampl = AMPLITUDE;
     let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
     let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
     let mut projection = calc_projection(&window);
+    let light: [f32; 3] = [-1.0, 1.0, 20.0];
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
@@ -220,6 +245,7 @@ pub fn main() {
             qv: QV,
             freq,
             ampl,
+            light,
         };
         encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
