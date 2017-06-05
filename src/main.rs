@@ -26,6 +26,7 @@ gfx_defines!{
         pv: [f32; 3] = "a_PV",
         align: f32 = "align",
         qv: [f32; 3] = "a_QV",
+        align2: f32 = "align2",
     }
 
     pipeline pipe {
@@ -59,6 +60,7 @@ pub fn main() {
                 vec3 a_PV;
                 float align;
                 vec3 a_QV;
+                float align2;
             };
 
             in float a_X;
@@ -69,11 +71,11 @@ pub fn main() {
 
             void main() {
                 v_Colour = a_Colour;
-                vec3 base = vec3(a_X, 0.0, 0.0);
+                vec3 base = vec3(a_X, sin(a_X), 0.0);
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
-                gl_Position = vec4(base, 1.0);
+                gl_Position = vec4(pos, 1.0);
             }
         "#.as_bytes(),
         r#"
@@ -126,8 +128,8 @@ pub fn main() {
     }
     let indices_u16: Vec<u16> = indices.into_iter().map(|i| i as u16).collect();
     let indices_u16_slice: &[u16] = &indices_u16;
-    println!("Vertices: {:?}", &vertices);
-    println!("Indices: {:?}", indices_u16_slice);
+    println!("Vertices ({}): {:?}", vertices.len(), &vertices);
+    println!("Indices ({}): {:?}", indices_u16_slice.len(), indices_u16_slice);
 
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, indices_u16_slice);
     let mut data = pipe::Data {
@@ -161,7 +163,8 @@ pub fn main() {
             colour: [ 1.0, 1.0, 0.0, 1.0 ],
             pv: [ 0.0, 0.1, 0.0 ],
             align: 0.0,
-            qv: [ 0.0, 0.0, 0.1 ]
+            qv: [ 0.0, 0.0, 0.1 ],
+            align2: 0.0,
         };
         encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
