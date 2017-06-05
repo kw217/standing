@@ -24,7 +24,7 @@ gfx_defines!{
     constant Locals {
         colour: [f32; 4] = "a_Colour",
         pv: [f32; 3] = "a_PV",
-        align: f32 = "align",
+        phase: f32 = "a_Phase",
         qv: [f32; 3] = "a_QV",
         align2: f32 = "align2",
     }
@@ -58,7 +58,7 @@ pub fn main() {
             uniform Locals {
                 vec4 a_Colour;
                 vec3 a_PV;
-                float align;
+                float a_Phase;
                 vec3 a_QV;
                 float align2;
             };
@@ -71,7 +71,7 @@ pub fn main() {
 
             void main() {
                 v_Colour = a_Colour;
-                vec3 base = vec3(a_X, sin(a_X), 0.0);
+                vec3 base = vec3(a_X, sin(a_X + a_Phase), 0.0);
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
@@ -159,10 +159,11 @@ pub fn main() {
         let t = time::precise_time_s();
 
         // draw a frame
+        let phase = (t / 2.0).fract() * 2.0 * std::f64::consts::PI;
         let locals = Locals {
             colour: [ 1.0, 1.0, 0.0, 1.0 ],
             pv: [ 0.0, 0.1, 0.0 ],
-            align: 0.0,
+            phase: phase as f32,
             qv: [ 0.0, 0.0, 0.1 ],
             align2: 0.0,
         };
