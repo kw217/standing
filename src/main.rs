@@ -11,6 +11,14 @@ extern crate time;
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
+const NUM_COMPONENTS: usize = 100;
+const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
+const STRING_COLOUR: [f32; 4] = [ 1.0, 1.0, 0.0, 1.0 ];
+const REPORT_INTERVAL: f64 = 1.0;
+const TEMPORAL_FREQ: f64 = 0.2;
+const SPATIAL_FREQ: f64 = 4.6;
+
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
 
@@ -22,11 +30,12 @@ gfx_defines!{
     }
 
     constant Locals {
-        colour: [f32; 4] = "a_Colour",
-        pv: [f32; 3] = "a_PV",
-        phase: f32 = "a_Phase",
-        qv: [f32; 3] = "a_QV",
-        align2: f32 = "align2",
+        // This struct is aligned to 4 x f32.
+        colour: [f32; 4] = "a_Colour",  // colour of string
+        pv: [f32; 3] = "a_PV",  // offset - vector P
+        phase: f32 = "a_Phase",  // phase at x=0 (radians)
+        qv: [f32; 3] = "a_QV",  // offset - vector Q
+        freq: f32 = "a_Freq",  // spatial frequency (radians/unit)
     }
 
     pipeline pipe {
@@ -36,11 +45,6 @@ gfx_defines!{
 //        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
     }
 }
-
-const NUM_COMPONENTS: usize = 100;
-const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
-
-const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
 
 pub fn main() {
     let events_loop = glutin::EventsLoop::new();
@@ -60,7 +64,7 @@ pub fn main() {
                 vec3 a_PV;
                 float a_Phase;
                 vec3 a_QV;
-                float align2;
+                float a_Freq;
             };
 
             in float a_X;
@@ -71,7 +75,7 @@ pub fn main() {
 
             void main() {
                 v_Colour = a_Colour;
-                vec3 base = vec3(a_X, sin(a_X + a_Phase), 0.0);
+                vec3 base = vec3(a_X, sin((a_X * a_Freq) + a_Phase), 0.0);
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
@@ -128,8 +132,6 @@ pub fn main() {
     }
     let indices_u16: Vec<u16> = indices.into_iter().map(|i| i as u16).collect();
     let indices_u16_slice: &[u16] = &indices_u16;
-    println!("Vertices ({}): {:?}", vertices.len(), &vertices);
-    println!("Indices ({}): {:?}", indices_u16_slice.len(), indices_u16_slice);
 
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, indices_u16_slice);
     let mut data = pipe::Data {
@@ -140,7 +142,6 @@ pub fn main() {
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
-    const REPORT_INTERVAL: f64 = 1.0;
     let mut next_report_t = last_t;
     while running {
         // fetch events
@@ -159,13 +160,14 @@ pub fn main() {
         let t = time::precise_time_s();
 
         // draw a frame
-        let phase = (t / 2.0).fract() * 2.0 * std::f64::consts::PI;
+        let phase = ((t * TEMPORAL_FREQ).fract() * 2.0 * std::f64::consts::PI) as f32;
+        let freq = SPATIAL_FREQ as f32;
         let locals = Locals {
-            colour: [ 1.0, 1.0, 0.0, 1.0 ],
+            colour: STRING_COLOUR,
             pv: [ 0.0, 0.1, 0.0 ],
-            phase: phase as f32,
+            phase,
             qv: [ 0.0, 0.0, 0.1 ],
-            align2: 0.0,
+            freq,
         };
         encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
