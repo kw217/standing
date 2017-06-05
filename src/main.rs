@@ -7,9 +7,11 @@ extern crate gfx;
 extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
+extern crate cgmath;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
+use cgmath::{Deg, Vector3, Matrix4, PerspectiveFov, SquareMatrix};
 
 /// Number of segments in the string.
 const NUM_COMPONENTS: usize = 100;
@@ -18,10 +20,10 @@ const NUM_COMPONENTS: usize = 100;
 const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
 
 /// P vector for cross-section.
-const PV: [f32; 3] = [ 0.0, 0.02, 0.0 ];
+const PV: [f32; 3] = [ 0.0, 0.1, 0.0 ];
 
 /// Q vector for cross-section.
-const QV: [f32; 3] = [ 0.0, 0.0, 0.5 ];
+const QV: [f32; 3] = [ 0.0, 0.0, 2.5 ];
 
 /// Background colour.
 const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
@@ -35,8 +37,8 @@ const TEMPORAL_FREQ_HZ: f64 = 0.2;
 /// Spatial frequence.
 const SPATIAL_FREQ_WAVES_PER_UNIT: f64 = 1.5;
 
-/// Amplitude of waves.
-const AMPLITUDE: f32 = 0.2;
+/// Amplitude of waves (before model transformation).
+const AMPLITUDE: f32 = 1.0;
 
 /// Reporting interval (for console reporting of FPS etc).
 const REPORT_INTERVAL_SEC: f64 = 1.0;
@@ -53,6 +55,8 @@ gfx_defines!{
 
     constant Locals {
         // This struct is aligned to 4 x f32.
+        model: [[f32; 4]; 4] = "u_Model", // transform into model coordinates
+        view: [[f32; 4]; 4] = "u_View",  // projection from model into view coordinates
         colour: [f32; 4] = "a_Colour",  // colour of string
         pv: [f32; 3] = "a_PV",  // offset - vector P
         phase: f32 = "a_Phase",  // phase at x=0 (radians)
@@ -83,6 +87,8 @@ pub fn main() {
             #version 150 core
 
             uniform Locals {
+                mat4 u_Model;
+                mat4 u_View;
                 vec4 a_Colour;
                 vec3 a_PV;
                 float a_Phase;
@@ -103,7 +109,7 @@ pub fn main() {
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
-                gl_Position = vec4(pos, 1.0);
+                gl_Position = u_View * u_Model * vec4(pos, 1.0);
             }
         "#.as_bytes(),
         r#"
@@ -164,6 +170,17 @@ pub fn main() {
         out: main_colour,
     };
 
+    let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
+    let ampl = AMPLITUDE;
+    let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
+    let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
+    let projection: Matrix4<f32> = PerspectiveFov {
+        fovy: Deg(30f32).into(),
+        aspect: 768.0 / 1024.0,  // TODO FIXME
+        near: 1.0,
+        far: 10.0,
+    }.into();
+
     let mut running = true;
     let mut last_t = time::precise_time_s();
     let mut next_report_t = last_t;
@@ -185,9 +202,9 @@ pub fn main() {
 
         // draw a frame
         let phase = ((t * TEMPORAL_FREQ_HZ).fract() * 2.0 * std::f64::consts::PI) as f32;
-        let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
-        let ampl = AMPLITUDE;
         let locals = Locals {
+            model: local_to_world.into(),
+            view: (projection * world_to_camera).into(),
             colour: STRING_COLOUR,
             pv: PV,
             phase,
