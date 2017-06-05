@@ -11,7 +11,7 @@ extern crate cgmath;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
-use cgmath::{Deg, Vector3, Matrix4, PerspectiveFov, SquareMatrix};
+use cgmath::{Deg, Vector3, Matrix4, PerspectiveFov};
 
 /// Number of segments in the string.
 const NUM_COMPONENTS: usize = 100;
@@ -71,6 +71,18 @@ gfx_defines!{
         out: gfx::RenderTarget<ColorFormat> = "Target0",
 //        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
     }
+}
+
+/// Compute projection matrix for window.
+fn calc_projection(window: &glutin::Window) -> Matrix4<f32> {
+    let (width, height) = window.get_inner_size_pixels().expect("No aspect!");
+    println!("Width {} height {}", width, height);
+    PerspectiveFov {
+        fovy: Deg(15f32).into(),
+        aspect: width as f32 / height as f32,
+        near: 1.0,
+        far: 20.0,
+    }.into()
 }
 
 pub fn main() {
@@ -170,16 +182,12 @@ pub fn main() {
         out: main_colour,
     };
 
+
     let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
     let ampl = AMPLITUDE;
     let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
     let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
-    let projection: Matrix4<f32> = PerspectiveFov {
-        fovy: Deg(30f32).into(),
-        aspect: 768.0 / 1024.0,  // TODO FIXME
-        near: 1.0,
-        far: 10.0,
-    }.into();
+    let mut projection = calc_projection(&window);
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
@@ -192,6 +200,7 @@ pub fn main() {
                 glutin::WindowEvent::Closed => running = false,
                 glutin::WindowEvent::Resized(_width, _height) => {
                     gfx_window_glutin::update_views(&window, &mut data.out, &mut main_depth);
+                    projection = calc_projection(&window);
                 },
                 _ => {},
             }
