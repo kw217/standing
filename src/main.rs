@@ -11,20 +11,42 @@ extern crate time;
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
+/// Number of segments in the string.
 const NUM_COMPONENTS: usize = 100;
+
+/// Cross-section polygon of the string, as (p,q).
 const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+
+/// P vector for cross-section.
+const PV: [f32; 3] = [ 0.0, 0.02, 0.0 ];
+
+/// Q vector for cross-section.
+const QV: [f32; 3] = [ 0.0, 0.0, 0.5 ];
+
+/// Background colour.
 const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
+
+/// String colour.
 const STRING_COLOUR: [f32; 4] = [ 1.0, 1.0, 0.0, 1.0 ];
-const REPORT_INTERVAL: f64 = 1.0;
-const TEMPORAL_FREQ: f64 = 0.2;
-const SPATIAL_FREQ: f64 = 4.6;
+
+/// Temporal frequency.
+const TEMPORAL_FREQ_HZ: f64 = 0.2;
+
+/// Spatial frequence.
+const SPATIAL_FREQ_WAVES_PER_UNIT: f64 = 1.5;
+
+/// Amplitude of waves.
+const AMPLITUDE: f32 = 0.2;
+
+/// Reporting interval (for console reporting of FPS etc).
+const REPORT_INTERVAL_SEC: f64 = 1.0;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
 
 gfx_defines!{
     vertex Vertex {
-        x: f32 = "a_X",  // x coordinate of wave [-1,1]
+        x: f32 = "a_X",  // x coordinate of wave [-0.5,0.5]
         p: f32 = "a_P",  // offset - vector P factor
         q: f32 = "a_Q",  // offset - vector Q factor
     }
@@ -36,6 +58,7 @@ gfx_defines!{
         phase: f32 = "a_Phase",  // phase at x=0 (radians)
         qv: [f32; 3] = "a_QV",  // offset - vector Q
         freq: f32 = "a_Freq",  // spatial frequency (radians/unit)
+        ampl: f32 = "a_Ampl",  // amplitude
     }
 
     pipeline pipe {
@@ -65,6 +88,7 @@ pub fn main() {
                 float a_Phase;
                 vec3 a_QV;
                 float a_Freq;
+                float a_Ampl;
             };
 
             in float a_X;
@@ -75,7 +99,7 @@ pub fn main() {
 
             void main() {
                 v_Colour = a_Colour;
-                vec3 base = vec3(a_X, sin((a_X * a_Freq) + a_Phase), 0.0);
+                vec3 base = vec3(a_X, a_Ampl * sin((a_X * a_Freq) + a_Phase), 0.0);
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
@@ -98,8 +122,8 @@ pub fn main() {
     let mut vertices = vec![];
     let mut indices = vec![];
     for i in 0..NUM_COMPONENTS {
-        // X simply ranges from -1 to 1.
-        let x = -1.0 + 2.0 * (i as f32 / NUM_COMPONENTS as f32);
+        // X simply ranges from -0.5 to 0.5
+        let x = -0.5 + (i as f32 / NUM_COMPONENTS as f32);
         // All vertices in cross-section at X.
         for pq in COMPONENT_PQS.iter() {
             let (p, q) = *pq;
@@ -160,14 +184,16 @@ pub fn main() {
         let t = time::precise_time_s();
 
         // draw a frame
-        let phase = ((t * TEMPORAL_FREQ).fract() * 2.0 * std::f64::consts::PI) as f32;
-        let freq = SPATIAL_FREQ as f32;
+        let phase = ((t * TEMPORAL_FREQ_HZ).fract() * 2.0 * std::f64::consts::PI) as f32;
+        let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
+        let ampl = AMPLITUDE;
         let locals = Locals {
             colour: STRING_COLOUR,
-            pv: [ 0.0, 0.1, 0.0 ],
+            pv: PV,
             phase,
-            qv: [ 0.0, 0.0, 0.1 ],
+            qv: QV,
             freq,
+            ampl,
         };
         encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
@@ -180,7 +206,7 @@ pub fn main() {
         let frame_time = t - last_t;
         last_t = t;
         if t > next_report_t {
-            next_report_t += REPORT_INTERVAL;
+            next_report_t += REPORT_INTERVAL_SEC;
             println!("Instantaneous FPS: {}", 1.0 / frame_time);
         }
     }
