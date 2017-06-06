@@ -73,8 +73,8 @@ gfx_defines!{
         locals: gfx::ConstantBuffer<Locals> = "Locals",
         out: gfx::RenderTarget<ColorFormat> = "Target0",
 //        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
-//        out_depth: gfx::DepthTarget<gfx::format::DepthStencil> =
-//             gfx::preset::depth::LESS_EQUAL_WRITE,
+        out_depth: gfx::DepthTarget<gfx::format::DepthStencil> =
+             gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
 
@@ -95,6 +95,7 @@ pub fn main() {
     let builder = glutin::WindowBuilder::new()
         .with_title("Standing waves".to_string())
         .with_dimensions(1024, 768)
+        .with_depth_buffer(24)
         .with_vsync();
     let (window, mut device, mut factory, main_colour, mut main_depth) =
         gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
@@ -158,6 +159,7 @@ pub fn main() {
         vbuf: vertex_buffer,
         locals: factory.create_constant_buffer(1),
         out: main_colour,
+        out_depth: main_depth.clone(),
     };
 
     let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
