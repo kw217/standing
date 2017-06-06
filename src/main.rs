@@ -51,6 +51,8 @@ gfx_defines!{
         x: f32 = "a_X",  // x coordinate of wave [-0.5,0.5]
         p: f32 = "a_P",  // offset - vector P factor
         q: f32 = "a_Q",  // offset - vector Q factor
+        next_p: f32 = "a_NextP",  // offset - vector P factor for next vertex
+        next_q: f32 = "a_NextQ",  // offset - vector Q factor for next vertex
     }
 
     constant Locals {
@@ -116,6 +118,8 @@ pub fn main() {
             in float a_X;
             in float a_P;
             in float a_Q;
+            in float a_NextP;
+            in float a_NextQ;
 
             out vec4 v_Colour;
             flat out vec3 v_Normal;
@@ -123,12 +127,17 @@ pub fn main() {
             void main() {
                 v_Colour = a_Colour;
                 vec3 base = vec3(a_X, a_Ampl * sin((a_X * a_Freq) + a_Phase), 0.0);
+                // tangent of the wave itself
                 vec3 tangent = vec3(1.0, a_Ampl * a_Freq * cos((a_X * a_Freq) + a_Phase), 0.0);
-                v_Normal = vec3(tangent.y, -tangent.x, 0.0);
-                vec3 norm = vec3(1.0, a_Ampl * cos((a_X + a_Freq) + a_Phase), 0.0);  // TODO proper normal calculation
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
-                vec3 pos = base + pv + qv;
+                vec3 dPos = pv + qv;
+                vec3 nextPv = a_NextP * a_PV;
+                vec3 nextQv = a_NextQ * a_QV;
+                vec3 nextDPos = nextPv + nextQv;
+                vec3 nextDelta = nextDPos - dPos;
+                vec3 pos = base + dPos;
+                v_Normal = normalize(cross(nextDelta, tangent));
                 gl_Position = u_View * u_Model * vec4(pos, 1.0);
             }
         "#.as_bytes(),
@@ -151,7 +160,7 @@ pub fn main() {
             };
 
             void main() {
-                float brightness = dot(normalize(v_Normal), normalize(u_Light));
+                float brightness = dot(v_Normal, normalize(u_Light));
                 vec4 dark_color = vec4(0.1, 0.1, 0.1, v_Colour.a);
                 Target0 = mix(dark_color, v_Colour, brightness);
             }
@@ -166,9 +175,10 @@ pub fn main() {
         // X simply ranges from -0.5 to 0.5
         let x = -0.5 + (i as f32 / NUM_COMPONENTS as f32);
         // All vertices in cross-section at X.
-        for pq in COMPONENT_PQS.iter() {
-            let (p, q) = *pq;
-            vertices.push( Vertex { x, p, q, })
+        for j in 0..COMPONENT_PQS.len() {
+            let (p, q) = COMPONENT_PQS[j];
+            let (next_p, next_q) = COMPONENT_PQS[(j + 1) % COMPONENT_PQS.len()];
+            vertices.push( Vertex { x, p, q, next_p, next_q, })
         }
 
         // First vertex of this cross-section.
@@ -213,7 +223,7 @@ pub fn main() {
     let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
     let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
     let mut projection = calc_projection(&window);
-    let light: [f32; 3] = [-1.0, 1.0, 20.0];
+    let light: [f32; 3] = [-10.0, 10.0, 20.0];
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
