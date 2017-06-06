@@ -123,12 +123,13 @@ pub fn main() {
             void main() {
                 v_Colour = a_Colour;
                 vec3 base = vec3(a_X, a_Ampl * sin((a_X * a_Freq) + a_Phase), 0.0);
+                vec3 tangent = vec3(1.0, a_Ampl * a_Freq * cos((a_X * a_Freq) + a_Phase), 0.0);
+                v_Normal = vec3(tangent.y, -tangent.x, 0.0);
                 vec3 norm = vec3(1.0, a_Ampl * cos((a_X + a_Freq) + a_Phase), 0.0);  // TODO proper normal calculation
                 vec3 pv = a_P * a_PV;
                 vec3 qv = a_Q * a_QV;
                 vec3 pos = base + pv + qv;
                 gl_Position = u_View * u_Model * vec4(pos, 1.0);
-                v_Normal = norm;
             }
         "#.as_bytes(),
         r#"
