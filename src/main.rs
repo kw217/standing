@@ -1,6 +1,8 @@
 //! Standing - standing wave demo using GFX
 //!
 //! Copyright 2017 Keith Wansbrough <keith@lochan.org>
+//!
+//! Standard RH coordinates: XY is screen plane (X right, Y up), Z is towards viewer.
 
 #[macro_use]
 extern crate gfx;
@@ -23,13 +25,16 @@ const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0
 const PV: [f32; 3] = [ 0.0, 0.2, 0.0 ];
 
 /// Q vector for cross-section.
-const QV: [f32; 3] = [ 0.0, 0.0, 2.5 ];
+const QV: [f32; 3] = [ 0.0, 0.0, -2.5 ];
 
 /// Background colour.
 const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
 
 /// String colour.
 const STRING_COLOUR: [f32; 4] = [ 1.0, 1.0, 0.0, 1.0 ];
+
+/// Light source location (actually this sets the direction only: from here toward origin).
+const LIGHT_SOURCE_LOCATION: [f32; 3] = [-10.0, 10.0, 20.0];
 
 /// Temporal frequency.
 const TEMPORAL_FREQ_HZ: f64 = 0.2;
@@ -97,7 +102,7 @@ pub fn main() {
         .with_dimensions(1024, 768)
         .with_depth_buffer(24)
         .with_vsync();
-    let (window, mut device, mut factory, main_colour, mut main_depth) =
+    let (window, mut device, mut factory, main_colour, main_depth) =
         gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
     let vertex_shader = include_bytes!("shader/standing_150.glslv");
@@ -107,7 +112,8 @@ pub fn main() {
     let pso = factory.create_pipeline_state(&programs,
         Primitive::TriangleList,
         // Cull the front face - guess my triangles or coordinates are backwards somehow!
-        state::Rasterizer { cull_face: state::CullFace::Front, ..state::Rasterizer::new_fill() },
+//        state::Rasterizer { cull_face: state::CullFace::Front, ..state::Rasterizer::new_fill() },
+        state::Rasterizer::new_fill().with_cull_back(),
         pipe::new()
     ).unwrap();
 
@@ -159,7 +165,7 @@ pub fn main() {
         vbuf: vertex_buffer,
         locals: factory.create_constant_buffer(1),
         out: main_colour,
-        out_depth: main_depth.clone(),
+        out_depth: main_depth,
     };
 
     let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
@@ -167,7 +173,7 @@ pub fn main() {
     let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
     let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
     let mut projection = calc_projection(&window);
-    let light: [f32; 3] = [10.0, -10.0, -20.0];  // *direction*
+    let light: [f32; 3] = LIGHT_SOURCE_LOCATION;
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
@@ -179,7 +185,7 @@ pub fn main() {
                 glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
                 glutin::WindowEvent::Closed => running = false,
                 glutin::WindowEvent::Resized(_width, _height) => {
-                    gfx_window_glutin::update_views(&window, &mut data.out, &mut main_depth);
+                    gfx_window_glutin::update_views(&window, &mut data.out, &mut data.out_depth);
                     projection = calc_projection(&window);
                 },
                 _ => {},
@@ -204,6 +210,7 @@ pub fn main() {
         };
         encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, CLEAR_COLOUR);
+        encoder.clear_depth(&data.out_depth, 1.0);
         encoder.draw(&slice, &pso, &data);
         encoder.flush(&mut device);
         window.swap_buffers().unwrap();
