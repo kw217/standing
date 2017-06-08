@@ -13,12 +13,13 @@ extern crate cgmath;
 
 use gfx::traits::FactoryExt;
 use gfx::{Device, Primitive, state};
-use cgmath::{Deg, Vector3, Matrix4, PerspectiveFov};
+use cgmath::{Deg, Matrix4, PerspectiveFov, SquareMatrix};
 
 /// Number of segments in the string.
 const NUM_COMPONENTS: usize = 100;
 
 /// Cross-section polygon of the string, as (p,q).
+//const COMPONENT_PQS: [(f32, f32); 7] = [(0.0, 0.0), (1.0, 0.0), (1.0, 0.4), (1.5, 0.5), (1.0, 0.6), (1.0, 1.0), (0.0, 1.0)];
 const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
 
 /// P vector for cross-section.
@@ -33,8 +34,22 @@ const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
 /// String colour.
 const STRING_COLOUR: [f32; 4] = [ 1.0, 1.0, 0.0, 1.0 ];
 
+/// String position.
+const STRING_POS_1: [f32; 3] = [0.0, 0.0, 0.0];
+
+/// String scale (non-uniform).
+/// Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
+/// to be adjusted.
+const STRING_SCALE: [f32; 3] = [2.0, 0.2, 1.0];
+
 /// Light source location (actually this sets the direction only: from here toward origin).
 const LIGHT_SOURCE_LOCATION: [f32; 3] = [-10.0, 10.0, 20.0];
+
+/// Location of the (perspective) camera.
+const CAMERA_POS: [f32; 3] = [0.0, 0.15, 10.0];
+
+/// Field of view of camera.
+const CAMERA_FOV_DEG: f32 = 15.0;
 
 /// Temporal frequency.
 const TEMPORAL_FREQ_HZ: f64 = 0.2;
@@ -88,7 +103,7 @@ fn calc_projection(window: &glutin::Window) -> Matrix4<f32> {
     let (width, height) = window.get_inner_size_pixels().expect("No aspect!");
     println!("Width {} height {}", width, height);
     PerspectiveFov {
-        fovy: Deg(15f32).into(),
+        fovy: Deg(CAMERA_FOV_DEG).into(),
         aspect: width as f32 / height as f32,
         near: 1.0,
         far: 20.0,
@@ -136,6 +151,8 @@ pub fn main() {
         if i == 0 {
             // First end-cap.
             // ensure last vertex is i1
+            // TODO get the normals correct for the endcaps somehow
+            // TODO get the end cap shapes correct for COMPONENT_PQS.len() != 3
             indices.append(&mut vec![i1 + 1, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 3, i1]);
         }
@@ -153,6 +170,8 @@ pub fn main() {
         if i == NUM_COMPONENTS - 1 {
             // Last end-cap.
             // ensure last vertex is i1
+            // TODO get the normals correct for the endcaps somehow
+            // TODO get the end cap shapes correct for COMPONENT_PQS.len() != 3
             indices.append(&mut vec![i1 + 3, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 1, i1]);
         }
@@ -170,8 +189,10 @@ pub fn main() {
 
     let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
     let ampl = AMPLITUDE;
-    let local_to_world = Matrix4::from_nonuniform_scale(2.0, 0.2, 1.0);
-    let world_to_camera = Matrix4::from_translation(Vector3::new(0.0, 0.15, -10.0));
+    let local_to_world = Matrix4::from_translation(STRING_POS_1.into())
+        * Matrix4::from_nonuniform_scale(STRING_SCALE[0], STRING_SCALE[1], STRING_SCALE[2]);
+    // invert so we specify camera position in world coords.
+    let world_to_camera = Matrix4::from_translation(CAMERA_POS.into()).invert().unwrap();
     let mut projection = calc_projection(&window);
     let light: [f32; 3] = LIGHT_SOURCE_LOCATION;
 
