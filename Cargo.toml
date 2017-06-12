@@ -9,4 +9,4 @@ gfx_window_glutin = "0.16"
 glutin = "0.8"
 time = "0.1"
 cgmath = "0.14"
-config = "0.4"
+config = { version = "0.4", features = ["yaml"] }

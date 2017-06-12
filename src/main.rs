@@ -12,57 +12,14 @@ extern crate time;
 extern crate cgmath;
 extern crate config;
 
+mod app_config;
+
 use gfx::traits::FactoryExt;
 use gfx::{Device, Primitive, state};
 use cgmath::{Deg, Matrix4, PerspectiveFov, SquareMatrix};
 
-/// Number of segments in the string.
-const NUM_COMPONENTS: usize = 100;
+use app_config::AppConfig;
 
-/// Cross-section polygon of the string, as (p,q).
-//const COMPONENT_PQS: [(f32, f32); 7] = [(0.0, 0.0), (1.0, 0.0), (1.0, 0.4), (1.5, 0.5), (1.0, 0.6), (1.0, 1.0), (0.0, 1.0)];
-const COMPONENT_PQS: [(f32, f32); 4] = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
-
-/// P vector for cross-section.
-const PV: [f32; 3] = [ 0.0, 0.2, 0.0 ];
-
-/// Q vector for cross-section.
-const QV: [f32; 3] = [ 0.0, 0.0, -2.5 ];
-
-/// Background colour.
-const CLEAR_COLOUR: [f32; 4] = [ 0.1, 0.1, 0.3, 1.0];
-
-/// String colour.
-const STRING_COLOUR: [f32; 4] = [ 1.0, 1.0, 0.0, 1.0 ];
-
-/// String position.
-const STRING_POS_1: [f32; 3] = [0.0, 0.0, 0.0];
-
-/// String scale (non-uniform).
-/// Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
-/// to be adjusted.
-const STRING_SCALE: [f32; 3] = [2.0, 0.2, 1.0];
-
-/// Light source location (actually this sets the direction only: from here toward origin).
-const LIGHT_SOURCE_LOCATION: [f32; 3] = [-10.0, 10.0, 20.0];
-
-/// Location of the (perspective) camera.
-const CAMERA_POS: [f32; 3] = [0.0, 0.15, 10.0];
-
-/// Field of view of camera.
-const CAMERA_FOV_DEG: f32 = 15.0;
-
-/// Temporal frequency.
-const TEMPORAL_FREQ_HZ: f64 = 0.2;
-
-/// Spatial frequence.
-const SPATIAL_FREQ_WAVES_PER_UNIT: f64 = 1.5;
-
-/// Amplitude of waves (before model transformation).
-const AMPLITUDE: f32 = 1.0;
-
-/// Reporting interval (for console reporting of FPS etc).
-const REPORT_INTERVAL_SEC: f64 = 1.0;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -100,60 +57,60 @@ gfx_defines!{
 }
 
 /// Compute projection matrix for window.
-fn calc_projection(window: &glutin::Window) -> Matrix4<f32> {
+fn calc_projection(window: &glutin::Window, config: &AppConfig) -> Matrix4<f32> {
     let (width, height) = window.get_inner_size_pixels().expect("No aspect!");
     println!("Width {} height {}", width, height);
     PerspectiveFov {
-        fovy: Deg(CAMERA_FOV_DEG).into(),
+        fovy: Deg(config.camera_fov_deg).into(),
         aspect: width as f32 / height as f32,
-        near: 1.0,
-        far: 20.0,
+        near: config.camera_near,
+        far: config.camera_far,
     }.into()
 }
 
 /// Build the geometry to render.
 /// Returns vertices and indices.
-fn build_geometry() -> (Vec<Vertex>, Vec<u16>) {
+fn build_geometry(config: &AppConfig) -> (Vec<Vertex>, Vec<u16>) {
     // Build a tube (prism).
     let mut vertices = vec![];
     let mut indices = vec![];
-    for i in 0..NUM_COMPONENTS {
+    for i in 0..config.num_components {
         // X simply ranges from -0.5 to 0.5
-        let x = -0.5 + (i as f32 / NUM_COMPONENTS as f32);
+        let x = -0.5 + (i as f32 / config.num_components as f32);
         // All vertices in cross-section at X.
-        for j in 0..COMPONENT_PQS.len() {
-            let (p, q) = COMPONENT_PQS[j];
-            let (next_p, next_q) = COMPONENT_PQS[(j + 1) % COMPONENT_PQS.len()];
-            vertices.push( Vertex { x, p, q, next_p, next_q, })
+        for j in 0..config.component_pqs.len() {
+            let pq = config.component_pqs[j];
+            let next_pq = config.component_pqs[(j + 1) % config.component_pqs.len()];
+            vertices.push( Vertex { x, p: pq[0], q: pq[1], next_p: next_pq[0], next_q: next_pq[1], })
         }
 
         // First vertex of this cross-section.
-        let i1 = i * COMPONENT_PQS.len();
+        let i1 = i * config.component_pqs.len();
 
         if i == 0 {
             // First end-cap.
             // ensure last vertex is i1
             // TODO get the normals correct for the endcaps somehow
-            // TODO get the end cap shapes correct for COMPONENT_PQS.len() != 3
+            // TODO get the end cap shapes correct for config.component_pqs.len() != 3
             indices.append(&mut vec![i1 + 1, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 3, i1]);
         }
         if i > 0 {
             // First vertex of last cross-section.
-            let i0 = (i-1) * COMPONENT_PQS.len();
+            let i0 = (i-1) * config.component_pqs.len();
             // Sides of prism.
-            for j in 0..COMPONENT_PQS.len() {
-                let j1 = (j + 1) % COMPONENT_PQS.len();
+            for j in 0..config.component_pqs.len() {
+                let j1 = (j + 1) % config.component_pqs.len();
                 // ensure last vertex is i0 + j both times.
                 indices.append(&mut vec![i1 + j, i1 + j1, i0 + j]);
                 indices.append(&mut vec![i1 + j1, i0 + j1, i0 + j]);
             }
         }
-        if i == NUM_COMPONENTS - 1 {
+        if i == config.num_components - 1 {
             // Last end-cap.
             // ensure last vertex is i1
             // TODO get the normals correct for the endcaps somehow
-            // TODO get the end cap shapes correct for COMPONENT_PQS.len() != 3
+            // TODO get the end cap shapes correct for config.component_pqs.len() != 3
             indices.append(&mut vec![i1 + 3, i1 + 2, i1]);
             indices.append(&mut vec![i1 + 2, i1 + 1, i1]);
         }
@@ -163,6 +120,8 @@ fn build_geometry() -> (Vec<Vertex>, Vec<u16>) {
 }
 
 pub fn main() {
+    let config = app_config::AppConfig::new().expect("Unable to parse config file");
+
     let events_loop = glutin::EventsLoop::new();
     let builder = glutin::WindowBuilder::new()
         .with_title("Standing waves".to_string())
@@ -186,7 +145,7 @@ pub fn main() {
         pipe::new()
     ).unwrap();
 
-    let (vertices, indices) = build_geometry();
+    let (vertices, indices) = build_geometry(&config);
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, &indices as &[u16]);
 
     let mut data = pipe::Data {
@@ -196,14 +155,14 @@ pub fn main() {
         out_depth: main_depth,
     };
 
-    let freq = (SPATIAL_FREQ_WAVES_PER_UNIT * 2.0 * std::f64::consts::PI) as f32;
-    let ampl = AMPLITUDE;
-    let local_to_world = Matrix4::from_translation(STRING_POS_1.into())
-        * Matrix4::from_nonuniform_scale(STRING_SCALE[0], STRING_SCALE[1], STRING_SCALE[2]);
+    let freq = (config.spatial_freq_waves_per_unit * 2.0 * std::f64::consts::PI) as f32;
+    let ampl = config.amplitude;
+    let local_to_world = Matrix4::from_translation(config.string_pos_1.into())
+        * Matrix4::from_nonuniform_scale(config.string_scale[0], config.string_scale[1], config.string_scale[2]);
     // invert so we specify camera position in world coords.
-    let world_to_camera = Matrix4::from_translation(CAMERA_POS.into()).invert().unwrap();
-    let mut projection = calc_projection(&window);
-    let light: [f32; 3] = LIGHT_SOURCE_LOCATION;
+    let world_to_camera = Matrix4::from_translation(config.camera_pos.into()).invert().unwrap();
+    let mut projection = calc_projection(&window, &config);
+    let light: [f32; 3] = config.light_source_location;
 
     let mut running = true;
     let mut last_t = time::precise_time_s();
@@ -216,7 +175,7 @@ pub fn main() {
                 glutin::WindowEvent::Closed => running = false,
                 glutin::WindowEvent::Resized(_width, _height) => {
                     gfx_window_glutin::update_views(&window, &mut data.out, &mut data.out_depth);
-                    projection = calc_projection(&window);
+                    projection = calc_projection(&window, &config);
                 },
                 _ => {},
             }
@@ -226,20 +185,20 @@ pub fn main() {
         let t = time::precise_time_s();
 
         // draw a frame
-        let phase = ((t * TEMPORAL_FREQ_HZ).fract() * 2.0 * std::f64::consts::PI) as f32;
+        let phase = ((t * config.temporal_freq_hz).fract() * 2.0 * std::f64::consts::PI) as f32;
         let locals = Locals {
             model: local_to_world.into(),
             view: (projection * world_to_camera).into(),
-            colour: STRING_COLOUR,
-            pv: PV,
+            colour: config.string_colour,
+            pv: config.pv,
             phase,
-            qv: QV,
+            qv: config.qv,
             freq,
             ampl,
             light,
         };
         encoder.update_constant_buffer(&data.locals, &locals);
-        encoder.clear(&data.out, CLEAR_COLOUR);
+        encoder.clear(&data.out, config.clear_colour);
         encoder.clear_depth(&data.out_depth, 1.0);
         encoder.draw(&slice, &pso, &data);
         encoder.flush(&mut device);
@@ -250,7 +209,7 @@ pub fn main() {
         let frame_time = t - last_t;
         last_t = t;
         if t > next_report_t {
-            next_report_t += REPORT_INTERVAL_SEC;
+            next_report_t += config.report_interval_sec;
             println!("Instantaneous FPS: {}", 1.0 / frame_time);
         }
     }

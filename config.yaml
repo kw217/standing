@@ -1,0 +1,68 @@
+# Configuration file - standing
+
+string:
+  # Number of segments in the string.
+  num_components: 100
+
+  # Temporal frequency.
+  temporal_freq_hz: 0.2
+
+  # Spatial frequency.
+  spatial_freq_waves_per_unit: 1.5
+
+  # Amplitude of waves (before model transformation).
+  amplitude: 1.0
+
+polygon:
+  # Cross-section polygon of the string, as (p,q).
+  component_pqs:
+    - [0.0, 0.0]
+    - [1.0, 0.0]
+    - [1.0, 1.0]
+    - [0.0, 1.0]
+  # [(0.0, 0.0), (1.0, 0.0), (1.0, 0.4), (1.5, 0.5), (1.0, 0.6), (1.0, 1.0), (0.0, 1.0)];
+
+  # P vector for cross-section.
+  pv: [ 0.0, 0.2, 0.0 ]
+
+  # Q vector for cross-section.
+  qv: [ 0.0, 0.0, -2.5 ]
+
+scene:
+  background:
+    # Background colour.
+    colour: [ 0.1, 0.1, 0.3, 1.0]
+
+  string:
+    # String colour.
+    colour: [ 1.0, 1.0, 0.0, 1.0 ]
+
+    # String position.
+    pos: [0.0, 0.0, 0.0]
+
+    # String scale (non-uniform).
+    #  Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
+    #  to be adjusted.
+    scale: [2.0, 0.2, 1.0]
+
+  light:
+    #  Light source location (actually this sets the direction only: from here toward origin).
+    pos: [-10.0, 10.0, 20.0]
+
+
+  camera:
+    #  Location of the (perspective) camera.
+    pos: [0.0, 0.15, 10.0]
+
+    #  Field of view of camera.
+    fov_deg: 15.0
+
+    # Near distance (for depth calculations).
+    near: 1.0
+
+    # Far distance (for depth calculations).
+    far: 20.0
+
+console:
+  # Reporting interval (for console reporting of FPS etc).
+  report_interval_sec: 1.0
