@@ -45,23 +45,41 @@ scene:
       #  to be adjusted.
       scale: [2.0, 0.2, 1.0]
 
-      # Factor to apply to spatial frequency of this string.
-      spatial_freq_factor: -2.0
+      # Two waves that are summed to make up this string.
+      waves:
+        - # Factor to apply to spatial frequency of this wave.
+          spatial_freq_factor: 1.0
 
-      # Offset to apply to spatial origin of this string (positive moves wave right).
-      spatial_offset: -0.5
+          # Offset to apply to spatial origin of this wave (positive moves wave right).
+          spatial_offset: -0.5
+
+          # Amplitude factor to apply to this wave.
+          amplitude: 1.0
+        - spatial_freq_factor: -1.0
+          spatial_offset: -0.5
+          amplitude: 1.0
 
     - colour: [ 1.0, 0.0, 0.0, 1.0 ]
       pos: [ 0.0, 0.8, 0.0 ]
       scale: [ 2.0, 0.2, 1.0 ]
-      spatial_freq_factor: 1.0
-      spatial_offset: -0.5
+      waves:
+        - spatial_freq_factor: 1.0
+          spatial_offset: -0.5
+          amplitude: 1.0
+        - spatial_freq_factor: 1.0
+          spatial_offset: -0.5
+          amplitude: 0.0
 
     - colour: [ 0.0, 1.0, 0.0, 1.0 ]
       pos: [ 0.0, -0.8, 0.0 ]
       scale: [ 2.0, 0.2, 1.0 ]
-      spatial_freq_factor: 1.0
-      spatial_offset: -0.5
+      waves:
+        - spatial_freq_factor: -1.0
+          spatial_offset: -0.5
+          amplitude: 1.0
+        - spatial_freq_factor: 1.0
+          spatial_offset: -0.5
+          amplitude: 0.0
 
   light:
     #  Light source location (actually this sets the direction only: from here toward origin).

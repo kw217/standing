@@ -200,12 +200,12 @@ pub fn main() {
                 pv: config.pv,
                 qv: config.qv,
                 light,
-                ampl1: ampl,
-                freq1: freq * string.spatial_freq_factor,
-                phase1: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
-                ampl2: 0.0,
-                freq2: freq * string.spatial_freq_factor,
-                phase2: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
+                ampl1: ampl * string.waves[0].amplitude,
+                freq1: freq * string.waves[0].spatial_freq_factor,
+                phase1: phase - (string.waves[0].spatial_offset * freq * string.waves[0].spatial_freq_factor),
+                ampl2: ampl * string.waves[1].amplitude,
+                freq2: freq * string.waves[1].spatial_freq_factor,
+                phase2: phase - (string.waves[1].spatial_offset * freq * string.waves[1].spatial_freq_factor),
             };
             encoder.update_constant_buffer(&data.locals, &locals);
             encoder.draw(&slice, &pso, &data);

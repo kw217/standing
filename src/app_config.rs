@@ -64,11 +64,19 @@ pub struct StringConfig {
     /// to be adjusted.
     pub string_scale: [f32; 3],
 
+    /// Waves that make up this string.
+    pub waves: [WaveConfig; 2],
+}
+
+pub struct WaveConfig {
     /// Factor to apply to spatial frequence of this string.
     pub spatial_freq_factor: f32,
 
     /// Offset to apply to spatial origin of this string (positive moves waves right).
     pub spatial_offset: f32,
+
+    /// Amplitude factor to apply to this wave.
+    pub amplitude: f32,
 }
 
 fn get_vec2(value: Value) -> Result<[f32; 2], String> {
@@ -141,8 +149,23 @@ impl StringConfig {
             string_colour: get_vec4(hashmap.get("colour").ok_or("")?.clone())?,
             string_pos_1: get_vec3(hashmap.get("pos").ok_or("")?.clone())?,
             string_scale: get_vec3(hashmap.get("scale").ok_or("")?.clone())?,
-            spatial_freq_factor: hashmap.get("spatial_freq_factor").ok_or("")?.clone().into_float().ok_or("")? as _,
-            spatial_offset: hashmap.get("spatial_offset").ok_or("")?.clone().into_float().ok_or("")? as _,
+            waves: {
+                let w = hashmap.get("waves").ok_or("")?.clone().into_array().ok_or("")?;
+                [WaveConfig::new(w[0].clone())?, WaveConfig::new(w[1].clone())?]
+            },
         })
     }
 }
+
+impl WaveConfig {
+    /// Read one wave's config.
+    pub fn new(value: Value) -> Result<WaveConfig, String> {
+        let hashmap = value.into_table().ok_or("")?;
+        Ok(WaveConfig {
+            spatial_freq_factor: hashmap.get("spatial_freq_factor").ok_or("")?.clone().into_float().ok_or("")? as _,
+            spatial_offset: hashmap.get("spatial_offset").ok_or("")?.clone().into_float().ok_or("")? as _,
+            amplitude: hashmap.get("amplitude").ok_or("")?.clone().into_float().ok_or("")? as _,
+        })
+    }
+}
+
