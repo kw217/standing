@@ -10,6 +10,7 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
 extern crate cgmath;
+extern crate config;
 
 use gfx::traits::FactoryExt;
 use gfx::{Device, Primitive, state};
@@ -110,28 +111,9 @@ fn calc_projection(window: &glutin::Window) -> Matrix4<f32> {
     }.into()
 }
 
-pub fn main() {
-    let events_loop = glutin::EventsLoop::new();
-    let builder = glutin::WindowBuilder::new()
-        .with_title("Standing waves".to_string())
-        .with_dimensions(1024, 768)
-        .with_depth_buffer(24)
-        .with_vsync();
-    let (window, mut device, mut factory, main_colour, main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
-    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let vertex_shader = include_bytes!("shader/standing_150.glslv");
-    let fragment_shader = include_bytes!("shader/standing_150.glslf");
-    let programs = factory.create_shader_set(vertex_shader, fragment_shader)
-        .expect("Shader compilation failed");
-    let pso = factory.create_pipeline_state(&programs,
-        Primitive::TriangleList,
-        // Cull the front face - guess my triangles or coordinates are backwards somehow!
-//        state::Rasterizer { cull_face: state::CullFace::Front, ..state::Rasterizer::new_fill() },
-        state::Rasterizer::new_fill().with_cull_back(),
-        pipe::new()
-    ).unwrap();
-
+/// Build the geometry to render.
+/// Returns vertices and indices.
+fn build_geometry() -> (Vec<Vertex>, Vec<u16>) {
     // Build a tube (prism).
     let mut vertices = vec![];
     let mut indices = vec![];
@@ -177,9 +159,36 @@ pub fn main() {
         }
     }
     let indices_u16: Vec<u16> = indices.into_iter().map(|i| i as u16).collect();
-    let indices_u16_slice: &[u16] = &indices_u16;
+    (vertices, indices_u16)
+}
 
-    let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, indices_u16_slice);
+pub fn main() {
+    let events_loop = glutin::EventsLoop::new();
+    let builder = glutin::WindowBuilder::new()
+        .with_title("Standing waves".to_string())
+        .with_dimensions(1024, 768)
+        .with_depth_buffer(24)
+        .with_vsync();
+    let (window, mut device, mut factory, main_colour, main_depth) =
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
+    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
+
+    let vertex_shader = include_bytes!("shader/standing_150.glslv");
+    let fragment_shader = include_bytes!("shader/standing_150.glslf");
+    let programs = factory.create_shader_set(vertex_shader, fragment_shader)
+        .expect("Shader compilation failed");
+
+    let pso = factory.create_pipeline_state(&programs,
+        Primitive::TriangleList,
+        // Cull the front face - guess my triangles or coordinates are backwards somehow!
+//        state::Rasterizer { cull_face: state::CullFace::Front, ..state::Rasterizer::new_fill() },
+        state::Rasterizer::new_fill().with_cull_back(),
+        pipe::new()
+    ).unwrap();
+
+    let (vertices, indices) = build_geometry();
+    let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, &indices as &[u16]);
+
     let mut data = pipe::Data {
         vbuf: vertex_buffer,
         locals: factory.create_constant_buffer(1),
