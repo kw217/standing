@@ -33,17 +33,25 @@ scene:
     # Background colour.
     colour: [ 0.1, 0.1, 0.3, 1.0]
 
-  string:
-    # String colour.
-    colour: [ 1.0, 1.0, 0.0, 1.0 ]
+  strings:
+    - # String colour.
+      colour: [ 1.0, 1.0, 0.0, 1.0 ]
 
-    # String position.
-    pos: [0.0, 0.0, 0.0]
+      # String position.
+      pos: [0.0, 0.0, 0.0]
 
-    # String scale (non-uniform).
-    #  Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
-    #  to be adjusted.
-    scale: [2.0, 0.2, 1.0]
+      # String scale (non-uniform).
+      #  Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
+      #  to be adjusted.
+      scale: [2.0, 0.2, 1.0]
+
+    - colour: [ 1.0, 0.0, 0.0, 1.0 ]
+      pos: [ 0.0, 0.8, 0.0 ]
+      scale: [ 2.0, 0.2, 1.0 ]
+
+    - colour: [ 0.0, 1.0, 0.0, 1.0 ]
+      pos: [ 0.0, -0.8, 0.0 ]
+      scale: [ 2.0, 0.2, 1.0 ]
 
   light:
     #  Light source location (actually this sets the direction only: from here toward origin).

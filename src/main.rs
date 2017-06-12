@@ -157,8 +157,6 @@ pub fn main() {
 
     let freq = (config.spatial_freq_waves_per_unit * 2.0 * std::f64::consts::PI) as f32;
     let ampl = config.amplitude;
-    let local_to_world = Matrix4::from_translation(config.string_pos_1.into())
-        * Matrix4::from_nonuniform_scale(config.string_scale[0], config.string_scale[1], config.string_scale[2]);
     // invert so we specify camera position in world coords.
     let world_to_camera = Matrix4::from_translation(config.camera_pos.into()).invert().unwrap();
     let mut projection = calc_projection(&window, &config);
@@ -183,24 +181,30 @@ pub fn main() {
 
         // get instant
         let t = time::precise_time_s();
+        let phase = ((t * config.temporal_freq_hz).fract() * 2.0 * std::f64::consts::PI) as f32;
 
         // draw a frame
-        let phase = ((t * config.temporal_freq_hz).fract() * 2.0 * std::f64::consts::PI) as f32;
-        let locals = Locals {
-            model: local_to_world.into(),
-            view: (projection * world_to_camera).into(),
-            colour: config.string_colour,
-            pv: config.pv,
-            phase,
-            qv: config.qv,
-            freq,
-            ampl,
-            light,
-        };
-        encoder.update_constant_buffer(&data.locals, &locals);
         encoder.clear(&data.out, config.clear_colour);
         encoder.clear_depth(&data.out_depth, 1.0);
-        encoder.draw(&slice, &pso, &data);
+
+        for string in &config.strings {
+            let local_to_world = Matrix4::from_translation(string.string_pos_1.into())
+                * Matrix4::from_nonuniform_scale(string.string_scale[0], string.string_scale[1], string.string_scale[2]);
+            let locals = Locals {
+                model: local_to_world.into(),
+                view: (projection * world_to_camera).into(),
+                colour: string.string_colour,
+                pv: config.pv,
+                phase,
+                qv: config.qv,
+                freq,
+                ampl,
+                light,
+            };
+            encoder.update_constant_buffer(&data.locals, &locals);
+            encoder.draw(&slice, &pso, &data);
+        }
+
         encoder.flush(&mut device);
         window.swap_buffers().unwrap();
         device.cleanup();

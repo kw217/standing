@@ -22,16 +22,7 @@ pub struct AppConfig {
     /// Background colour.
     pub clear_colour: [f32; 4],
 
-    /// String colour.
-    pub string_colour: [f32; 4],
-
-    /// String position.
-    pub string_pos_1: [f32; 3],
-
-    /// String scale (non-uniform).
-    /// Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
-    /// to be adjusted.
-    pub string_scale: [f32; 3],
+    pub strings: Vec<StringConfig>,
 
     /// Light source location (actually this sets the direction only: from here toward origin).
     pub light_source_location: [f32; 3],
@@ -59,6 +50,19 @@ pub struct AppConfig {
 
     /// Reporting interval (for console reporting of FPS etc).
     pub report_interval_sec: f64,
+}
+
+pub struct StringConfig {
+    /// String colour.
+    pub string_colour: [f32; 4],
+
+    /// String position.
+    pub string_pos_1: [f32; 3],
+
+    /// String scale (non-uniform).
+    /// Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
+    /// to be adjusted.
+    pub string_scale: [f32; 3],
 }
 
 fn get_vec2(value: Value) -> Result<[f32; 2], String> {
@@ -106,9 +110,10 @@ impl AppConfig {
             qv: get_vec3(c.get("polygon.qv").ok_or("")?)?,
 
             clear_colour: get_vec4(c.get("scene.background.colour").ok_or("")?)?,
-            string_colour: get_vec4(c.get("scene.string.colour").ok_or("")?)?,
-            string_pos_1: get_vec3(c.get("scene.string.pos").ok_or("")?)?,
-            string_scale: get_vec3(c.get("scene.string.scale").ok_or("")?)?,
+
+            strings: c.get("scene.strings").ok_or("")?.into_array().ok_or("")?.into_iter().map(|s| {
+                StringConfig::new(s)
+            }).collect::<Result<Vec<StringConfig>, String>>()?,
 
             light_source_location: get_vec3(c.get("scene.light.pos").ok_or("")?)?,
 
@@ -118,6 +123,18 @@ impl AppConfig {
             camera_far: c.get("scene.camera.far").ok_or("")?.into_float().ok_or("")? as _,
 
             report_interval_sec: c.get("console.report_interval_sec").ok_or("")?.into_int().ok_or("")? as _,
+        })
+    }
+}
+
+impl StringConfig {
+    /// Read one string's config.
+    pub fn new(value: Value) -> Result<StringConfig, String> {
+        let hashmap = value.into_table().ok_or("")?;
+        Ok(StringConfig {
+            string_colour: get_vec4(hashmap.get("colour").ok_or("")?.clone())?,
+            string_pos_1: get_vec3(hashmap.get("pos").ok_or("")?.clone())?,
+            string_scale: get_vec3(hashmap.get("scale").ok_or("")?.clone())?,
         })
     }
 }
