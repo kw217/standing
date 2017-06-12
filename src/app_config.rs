@@ -63,6 +63,12 @@ pub struct StringConfig {
     /// Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
     /// to be adjusted.
     pub string_scale: [f32; 3],
+
+    /// Factor to apply to spatial frequence of this string.
+    pub spatial_freq_factor: f32,
+
+    /// Offset to apply to spatial origin of this string (positive moves waves right).
+    pub spatial_offset: f32,
 }
 
 fn get_vec2(value: Value) -> Result<[f32; 2], String> {
@@ -135,6 +141,8 @@ impl StringConfig {
             string_colour: get_vec4(hashmap.get("colour").ok_or("")?.clone())?,
             string_pos_1: get_vec3(hashmap.get("pos").ok_or("")?.clone())?,
             string_scale: get_vec3(hashmap.get("scale").ok_or("")?.clone())?,
+            spatial_freq_factor: hashmap.get("spatial_freq_factor").ok_or("")?.clone().into_float().ok_or("")? as _,
+            spatial_offset: hashmap.get("spatial_offset").ok_or("")?.clone().into_float().ok_or("")? as _,
         })
     }
 }

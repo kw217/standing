@@ -195,9 +195,9 @@ pub fn main() {
                 view: (projection * world_to_camera).into(),
                 colour: string.string_colour,
                 pv: config.pv,
-                phase,
+                phase: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
                 qv: config.qv,
-                freq,
+                freq: freq * string.spatial_freq_factor,
                 ampl,
                 light,
             };

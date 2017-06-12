@@ -26,9 +26,14 @@ flat out vec3 v_Normal;
 
 void main() {
     v_Colour = a_Colour;
-    vec3 base = vec3(a_X, a_Ampl * sin((a_X * a_Freq) + a_Phase), 0.0);
+
+    float ampl = a_Ampl;
+    float theta = (a_X * a_Freq) + a_Phase;
+    float d_theta = a_Freq;
+
+    vec3 base = vec3(a_X, ampl * sin(theta), 0.0);
     // tangent of the wave itself
-    vec3 tangent = vec3(1.0, a_Ampl * a_Freq * cos((a_X * a_Freq) + a_Phase), 0.0);
+    vec3 tangent = vec3(1.0, ampl * d_theta * cos(theta), 0.0);
 
     vec3 pv = a_P * a_PV;
     vec3 qv = a_Q * a_QV;
