@@ -31,9 +31,12 @@ void main() {
     float theta = (a_X * a_Freq) + a_Phase;
     float d_theta = a_Freq;
 
-    vec3 base = vec3(a_X, ampl * sin(theta), 0.0);
+    float y = ampl * sin(theta);
+    float dy = ampl * d_theta * cos(theta);
+
+    vec3 base = vec3(a_X, y, 0.0);
     // tangent of the wave itself
-    vec3 tangent = vec3(1.0, ampl * d_theta * cos(theta), 0.0);
+    vec3 tangent = vec3(1.0, dy, 0.0);
 
     vec3 pv = a_P * a_PV;
     vec3 qv = a_Q * a_QV;
