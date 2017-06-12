@@ -39,11 +39,14 @@ gfx_defines!{
         view: [[f32; 4]; 4] = "u_View",  // projection from model into view coordinates
         colour: [f32; 4] = "a_Colour",  // colour of string
         pv: [f32; 3] = "a_PV",  // offset - vector P
-        phase: f32 = "a_Phase",  // phase at x=0 (radians)
+        phase1: f32 = "a_Phase1",  // phase at x=0 (radians) (component 1)
         qv: [f32; 3] = "a_QV",  // offset - vector Q
-        freq: f32 = "a_Freq",  // spatial frequency (radians/unit)
+        freq1: f32 = "a_Freq1",  // spatial frequency (radians/unit) (component 1)
         light: [f32; 3] = "u_Light", // light direction for Gouraud
-        ampl: f32 = "a_Ampl",  // amplitude
+        ampl1: f32 = "a_Ampl1",  // amplitude (component 1)
+        ampl2: f32 = "a_Ampl2", // amplitude (component 2)
+        freq2: f32 = "a_Freq2",  // spatial frequency (radians/unit) (component 2)
+        phase2: f32 = "a_Phase2",  // phase at x=0 (radians) (component 2)
     }
 
     pipeline pipe {
@@ -195,11 +198,14 @@ pub fn main() {
                 view: (projection * world_to_camera).into(),
                 colour: string.string_colour,
                 pv: config.pv,
-                phase: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
                 qv: config.qv,
-                freq: freq * string.spatial_freq_factor,
-                ampl,
                 light,
+                ampl1: ampl,
+                freq1: freq * string.spatial_freq_factor,
+                phase1: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
+                ampl2: 0.0,
+                freq2: freq * string.spatial_freq_factor,
+                phase2: phase - (string.spatial_offset * freq * string.spatial_freq_factor),
             };
             encoder.update_constant_buffer(&data.locals, &locals);
             encoder.draw(&slice, &pso, &data);

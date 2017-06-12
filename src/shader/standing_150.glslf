@@ -10,11 +10,14 @@ uniform Locals {
     mat4 u_View;
     vec4 a_Colour;
     vec3 a_PV;
-    float a_Phase;
+    float a_Phase1;
     vec3 a_QV;
-    float a_Freq;
+    float a_Freq1;
     vec3 u_Light;
-    float a_Ampl;
+    float a_Ampl1;
+    float a_Ampl2;
+    float a_Freq2;
+    float a_Phase2;
 };
 
 void main() {

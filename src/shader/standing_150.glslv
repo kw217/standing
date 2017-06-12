@@ -7,11 +7,14 @@ uniform Locals {
     mat4 u_View;
     vec4 a_Colour;
     vec3 a_PV;
-    float a_Phase;
+    float a_Phase1;
     vec3 a_QV;
-    float a_Freq;
+    float a_Freq1;
     vec3 u_Light;
-    float a_Ampl;
+    float a_Ampl1;
+    float a_Ampl2;
+    float a_Freq2;
+    float a_Phase2;
 };
 
 in float a_X;
@@ -27,12 +30,16 @@ flat out vec3 v_Normal;
 void main() {
     v_Colour = a_Colour;
 
-    float ampl = a_Ampl;
-    float theta = (a_X * a_Freq) + a_Phase;
-    float d_theta = a_Freq;
+    float ampl1 = a_Ampl1;
+    float theta1 = (a_X * a_Freq1) + a_Phase1;
+    float d_theta1 = a_Freq1;
 
-    float y = ampl * sin(theta);
-    float dy = ampl * d_theta * cos(theta);
+    float ampl2 = a_Ampl2;
+    float theta2 = (a_X * a_Freq2) + a_Phase2;
+    float d_theta2 = a_Freq2;
+
+    float y = ampl1 * sin(theta1) + ampl2 * sin(theta2);
+    float dy = ampl1 * d_theta1 * cos(theta1) + ampl2 * d_theta2 * cos(theta2);
 
     vec3 base = vec3(a_X, y, 0.0);
     // tangent of the wave itself
