@@ -42,9 +42,11 @@ scene:
       #  to be adjusted.
       # Two waves that are summed to make up this string.
         # Factor to apply to spatial frequency of this wave.
+        #   (setting this to 1.0 makes it move left, -1.0 moves right)
         # Offset to apply to spatial origin of this wave (positive moves wave right).
-        #   (setting this to -0.5 corresponds to an open reflection on left edge)
+        #   (setting this to -0.5 corresponds to a reflection on left edge)
         # Amplitude factor to apply to this wave.
+        #   (setting this to 1.0 is an open reflection, -1.0 is a closed reflection)
 
     - colour: [ 1.0, 0.0, 0.0, 1.0 ]
       pos: [ 0.0, 0.8, 0.0 ]
@@ -63,7 +65,7 @@ scene:
       waves:
         - spatial_freq_factor: -1.0
           spatial_offset: -0.5
-          amplitude: 1.0
+          amplitude: -1.0
         - spatial_freq_factor: 0.0
           spatial_offset: 0.0
           amplitude: 0.0
@@ -77,7 +79,7 @@ scene:
           amplitude: 1.0
         - spatial_freq_factor: -1.0
           spatial_offset: -0.5
-          amplitude: 1.0
+          amplitude: -1.0
 
   light:
     #  Light source location (actually this sets the direction only: from here toward origin).
