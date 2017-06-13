@@ -8,7 +8,7 @@ string:
   temporal_freq_hz: 0.2
 
   # Spatial frequency.
-  spatial_freq_waves_per_unit: 1.5
+  spatial_freq_waves_per_unit: 3.0
 
   # Amplitude of waves (before model transformation).
   amplitude: 1.0
@@ -34,52 +34,50 @@ scene:
     colour: [ 0.1, 0.1, 0.3, 1.0]
 
   strings:
-    - # String colour.
-      colour: [ 1.0, 1.0, 0.0, 1.0 ]
-
+    # For each string:
+      # String colour.
       # String position.
-      pos: [0.0, 0.0, 0.0]
-
       # String scale (non-uniform).
       #  Initially x goes from -0.5 to 0.5, y from +/-AMPLITUDE, z small; plus PQ. This allows those
       #  to be adjusted.
-      scale: [2.0, 0.2, 1.0]
-
       # Two waves that are summed to make up this string.
-      waves:
-        - # Factor to apply to spatial frequency of this wave.
-          spatial_freq_factor: 1.0
-
-          # Offset to apply to spatial origin of this wave (positive moves wave right).
-          spatial_offset: -0.5
-
-          # Amplitude factor to apply to this wave.
-          amplitude: 1.0
-        - spatial_freq_factor: -1.0
-          spatial_offset: -0.5
-          amplitude: 1.0
+        # Factor to apply to spatial frequency of this wave.
+        # Offset to apply to spatial origin of this wave (positive moves wave right).
+        #   (setting this to -0.5 corresponds to an open reflection on left edge)
+        # Amplitude factor to apply to this wave.
 
     - colour: [ 1.0, 0.0, 0.0, 1.0 ]
       pos: [ 0.0, 0.8, 0.0 ]
-      scale: [ 2.0, 0.2, 1.0 ]
+      scale: [ 4.0, 0.2, 1.0 ]
       waves:
         - spatial_freq_factor: 1.0
           spatial_offset: -0.5
           amplitude: 1.0
-        - spatial_freq_factor: 1.0
-          spatial_offset: -0.5
+        - spatial_freq_factor: 0.0
+          spatial_offset: 0.0
           amplitude: 0.0
 
     - colour: [ 0.0, 1.0, 0.0, 1.0 ]
       pos: [ 0.0, -0.8, 0.0 ]
-      scale: [ 2.0, 0.2, 1.0 ]
+      scale: [ 4.0, 0.2, 1.0 ]
       waves:
         - spatial_freq_factor: -1.0
           spatial_offset: -0.5
           amplitude: 1.0
+        - spatial_freq_factor: 0.0
+          spatial_offset: 0.0
+          amplitude: 0.0
+
+    - colour: [ 1.0, 1.0, 0.0, 1.0 ]
+      pos: [0.0, 0.0, 0.0]
+      scale: [4.0, 0.2, 1.0]
+      waves:
         - spatial_freq_factor: 1.0
           spatial_offset: -0.5
-          amplitude: 0.0
+          amplitude: 1.0
+        - spatial_freq_factor: -1.0
+          spatial_offset: -0.5
+          amplitude: 1.0
 
   light:
     #  Light source location (actually this sets the direction only: from here toward origin).
