@@ -5,10 +5,10 @@ string:
   num_components: 100
 
   # Temporal frequency.
-  temporal_freq_hz: 0.2
+  temporal_freq_hz: 0.6
 
   # Spatial frequency.
-  spatial_freq_waves_per_unit: 3.0
+  spatial_freq_waves_per_unit: 1.5
 
   # Amplitude of waves (before model transformation).
   amplitude: 1.0
@@ -60,7 +60,7 @@ scene:
           amplitude: 0.0
 
     - colour: [ 0.0, 1.0, 0.0, 1.0 ]
-      pos: [ 0.0, -0.8, 0.0 ]
+      pos: [ 0.0, 0, 0.0 ]
       scale: [ 4.0, 0.2, 1.0 ]
       waves:
         - spatial_freq_factor: -1.0
@@ -71,7 +71,7 @@ scene:
           amplitude: 0.0
 
     - colour: [ 1.0, 1.0, 0.0, 1.0 ]
-      pos: [0.0, 0.0, 0.0]
+      pos: [0.0, -0.8, 0.0]
       scale: [4.0, 0.2, 1.0]
       waves:
         - spatial_freq_factor: 1.0
